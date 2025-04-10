@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image and Video Processing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-in {
+      animation: fadeIn 1s ease-in-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6 font-sans">
+
+  <h1 class="text-3xl font-bold mb-6 text-blue-700">Upload Image or Video for Processing</h1>
+
+  <!-- Upload form -->
+  <form id="upload-form" enctype="multipart/form-data" class="bg-white p-6 rounded-xl shadow-md w-full max-w-md space-y-4">
+    <input type="file" name="file" accept="image/*,video/*" required class="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"/>
+    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Upload</button>
+    <div id="loading" class="hidden text-center text-blue-500">Processing...</div>
+  </form>
+
+  <!-- Display the results -->
+  <div id="results" class="mt-8 w-full max-w-3xl hidden fade-in">
+    <h2 class="text-xl font-semibold text-gray-800 mb-2">Processed Data:</h2>
+    <p id="relationships" class="text-gray-700 mb-4"></p>
+
+    <div id="image-container" class="hidden">
+      <h3 class="text-lg font-semibold mb-2">Processed Image:</h3>
+      <img id="processed-image" src="" alt="Processed Image" class="rounded-lg shadow-md max-w-full"/>
+    </div>
+
+    <div id="video-container" class="hidden">
+      <h3 class="text-lg font-semibold mb-2">Processed Video Frames:</h3>
+      <div id="video-frames" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('upload-form');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const fileInput = document.querySelector('input[type="file"]');
+      if (!fileInput.files.length) return;
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      loading.classList.remove('hidden');
+      results.classList.add('hidden');
+
+      fetch('/upload_file', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        loading.classList.add('hidden');
+        results.classList.remove('hidden');
+
+        const relationshipsDiv = document.getElementById('relationships');
+        relationshipsDiv.innerHTML = '<strong>Relationships:</strong><br>' + data.relationships.join('<br>');
+
+        const imageContainer = document.getElementById('image-container');
+        const videoContainer = document.getElementById('video-container');
+        const videoFrames = document.getElementById('video-frames');
+
+        // Clear any previous frames
+        videoFrames.innerHTML = '';
+
+        if (data.image) {
+          document.getElementById('processed-image').src = 'data:image/jpeg;base64,' + data.image;
+          imageContainer.classList.remove('hidden');
+          videoContainer.classList.add('hidden');
+        } else if (data.video_frames && data.video_frames.length > 0) {
+          data.video_frames.forEach((frame, index) => {
+            const img = document.createElement('img');
+            img.src = 'data:image/jpeg;base64,' + frame;
+            img.alt = `Frame ${index}`;
+            img.className = 'rounded-lg shadow-md w-full';
+            videoFrames.appendChild(img);
+          });
+          videoContainer.classList.remove('hidden');
+          imageContainer.classList.add('hidden');
+        }
+
+        results.classList.add('fade-in');
+      })
+      .catch(error => {
+        loading.classList.add('hidden');
+        console.error('Error:', error);
+      });
+    });
+  </script>
+
+</body>
+</html>
